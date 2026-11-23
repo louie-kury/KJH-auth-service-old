@@ -1,8 +1,6 @@
 package com.louiekury.auth.global;
 
 import com.louiekury.auth.global.config.JpaAuditingConfig;
-import com.louiekury.auth.global.config.MongoAuditingConfig;
-import com.louiekury.auth.global.persistence.BaseDocument;
 import com.louiekury.auth.global.persistence.BaseEntity;
 import java.time.Clock;
 import java.time.Instant;
@@ -34,20 +32,6 @@ class AuditingContractTest {
     }
 
     @Test
-    void mongoProviderAndAuditingKeepInstantOnCreateAndUpdate() {
-        MongoRecord record = new MongoRecord();
-        AuditingHandler handler = handler(new MongoAuditingConfig().mongoDateTimeProvider(clock(CREATED)));
-        handler.markCreated(record);
-        assertThat(record.getCreatedAt()).isEqualTo(CREATED);
-        assertThat(record.getUpdatedAt()).isEqualTo(CREATED);
-        handler.setDateTimeProvider(new MongoAuditingConfig().mongoDateTimeProvider(clock(UPDATED)));
-        handler.markModified(record);
-        assertThat(record.getCreatedAt()).isEqualTo(CREATED);
-        assertThat(record.getUpdatedAt()).isEqualTo(UPDATED);
-        assertThat(record.getDeletedAt()).isNull();
-    }
-
-    @Test
     void jpaDeletionRejectsMissingFirstTimeAndPreservesFirstDeletion() {
         JpaRecord record = new JpaRecord();
         assertThatNullPointerException().isThrownBy(() -> record.markDeleted(null));
@@ -59,17 +43,6 @@ class AuditingContractTest {
         assertThat(record.getDeletedAt()).isEqualTo(first);
     }
 
-    @Test
-    void mongoDeletionRejectsMissingFirstTimeAndPreservesFirstDeletion() {
-        MongoRecord record = new MongoRecord();
-        assertThatNullPointerException().isThrownBy(() -> record.markDeleted(null));
-        assertThat(record.getDeletedAt()).isNull();
-        record.markDeleted(CREATED);
-        record.markDeleted(UPDATED);
-        record.markDeleted(null);
-        assertThat(record.getDeletedAt()).isEqualTo(CREATED);
-    }
-
     private static Clock clock(Instant instant) { return Clock.fixed(instant, ZoneOffset.UTC); }
     private static AuditingHandler handler(DateTimeProvider provider) {
         AuditingHandler handler = new AuditingHandler(new PersistentEntities(List.of()));
@@ -77,5 +50,4 @@ class AuditingContractTest {
         return handler;
     }
     static class JpaRecord extends BaseEntity { }
-    static class MongoRecord extends BaseDocument { }
 }

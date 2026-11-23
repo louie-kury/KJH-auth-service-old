@@ -1,7 +1,6 @@
 package com.louiekury.auth.global.web.response;
 
 import com.louiekury.auth.global.config.TimeConfig;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Objects;
@@ -14,11 +13,6 @@ public final class ApiTime {
 
     public static OffsetDateTime from(LocalDateTime koreanDateTime) {
         return Objects.requireNonNull(koreanDateTime, "koreanDateTime")
-            .atZone(TimeConfig.BUSINESS_ZONE).toOffsetDateTime();
-    }
-
-    public static OffsetDateTime from(Instant instant) {
-        return Objects.requireNonNull(instant, "instant")
             .atZone(TimeConfig.BUSINESS_ZONE).toOffsetDateTime();
     }
 }

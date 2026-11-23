@@ -18,13 +18,11 @@ class TimeContractTest {
         TimeZone previous = TimeZone.getDefault();
         try {
             TimeZone.setDefault(TimeZone.getTimeZone(zone));
-            Instant before = Instant.parse("2026-11-19T14:59:59Z");
-            Instant midnight = Instant.parse("2026-11-19T15:00:00Z");
+            LocalDateTime before = LocalDateTime.parse("2026-11-19T23:59:59");
+            LocalDateTime midnight = LocalDateTime.parse("2026-11-20T00:00:00");
             assertThat(ApiTime.from(before).toString()).isEqualTo("2026-11-19T23:59:59+09:00");
             assertThat(ApiTime.from(midnight).toString()).isEqualTo("2026-11-20T00:00+09:00");
-            assertThat(ApiTime.from(midnight).toInstant()).isEqualTo(midnight);
-            assertThat(ApiTime.from(LocalDateTime.parse("2026-11-20T00:00:00")))
-                .isEqualTo(ApiTime.from(midnight));
+            assertThat(ApiTime.from(midnight).toInstant()).isEqualTo(Instant.parse("2026-11-19T15:00:00Z"));
             assertThat(ApiTime.from(before).getOffset()).isEqualTo(ZoneOffset.ofHours(9));
         } finally {
             TimeZone.setDefault(previous);
@@ -37,8 +35,7 @@ class TimeContractTest {
     }
 
     @Test
-    void absentTimesCannotBecomeInventedTimestamps() {
-        assertThatNullPointerException().isThrownBy(() -> ApiTime.from((Instant) null));
-        assertThatNullPointerException().isThrownBy(() -> ApiTime.from((LocalDateTime) null));
+    void absentTimeCannotBecomeAnInventedTimestamp() {
+        assertThatNullPointerException().isThrownBy(() -> ApiTime.from(null));
     }
 }
