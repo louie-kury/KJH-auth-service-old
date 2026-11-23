@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: louie-kury-auth-service
+  datasource:
+    url: ${MYSQL_URL}
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
+    hikari:
+      data-source-properties:
+        connectionTimeZone: '+09:00'
+        forceConnectionTimeZoneToSession: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+  mongodb:
+    uri: ${MONGODB_URI}
+    database: ${MONGODB_DATABASE:louie_kury_auth_dev}
+  data:
+    mongodb:
+      auto-index-creation: false
