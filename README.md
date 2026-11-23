@@ -1,37 +1,12 @@
 # louie-kury-auth-service
 
-루이쿠리 인증 서비스입니다. 로컬 실행에는 JDK 17과 Docker Compose가 필요합니다. 빌드에는 저장소의 Gradle Wrapper를 사용합니다.
+루이쿠리 인증 서비스입니다. 로컬 실행에는 JDK 17이 필요하며 Gradle Wrapper를 사용합니다.
 
-## 로컬 MySQL 준비
+## 외부 MySQL 연결과 실행
 
-Docker Desktop을 시작하고, 저장소 루트에서 `.env.example`을 `.env`로 복사합니다. 기존 `.env`가 있다면 필요한 항목만 보완합니다. `MYSQL_ROOT_PASSWORD`와 `MYSQL_PASSWORD`를 각각 로컬 개발용 비밀번호로 설정한 뒤 다음 명령으로 MySQL 8.4.13을 시작합니다.
+저장소 루트에 `.env`를 준비합니다. 처음에는 `.env.example`을 복사하고 `MYSQL_URL`, `MYSQL_USERNAME`, `MYSQL_PASSWORD`를 실제 데이터베이스 접속 정보로 설정합니다. 기존 `.env`가 있으면 필요한 항목만 확인합니다. 실제 비밀번호는 로컬에만 보관합니다.
 
-```sh
-docker compose config --quiet
-docker compose up -d mysql
-docker compose ps mysql
-docker compose logs --tail=50 mysql
-```
-
-MySQL의 기본 접속 주소는 `127.0.0.1:3307`, 개발 DB는 `louie_kury_auth_dev`, 애플리케이션 사용자는 `auth_service`입니다. 3307이 이미 사용 중이면 `.env`의 `MYSQL_HOST_PORT`와 아래 `MYSQL_URL`의 포트를 함께 바꿉니다. 데이터는 `louie-kury-auth-mysql-data` 볼륨에 저장됩니다. 초기화된 볼륨의 사용자 비밀번호는 `.env`를 수정하는 것만으로 변경되지 않습니다.
-
-앱을 실행하기 전에 서비스 계정으로 개발 DB에 접속해 `SELECT 1`을 실행합니다. 비밀번호 프롬프트에는 `MYSQL_PASSWORD`로 설정한 값을 입력합니다. 결과에 `1`이 표시되면 앱 실행 단계로 넘어갑니다. 접속이 실패하면 MySQL 초기화 로그와 서비스 계정 설정을 확인한 뒤 다시 실행합니다.
-
-```sh
-docker compose exec mysql mysql --protocol=TCP -h 127.0.0.1 -u auth_service -p -D louie_kury_auth_dev -e "SELECT 1"
-```
-
-## 애플리케이션 연결과 실행
-
-Compose는 `.env`를 읽습니다. 호스트의 Spring Boot에는 아래 값을 현재 셸이나 IDE의 실행 환경변수로 별도로 지정합니다.
-
-| 환경변수 | 설정 |
-| --- | --- |
-| `MYSQL_URL` | 로컬 기본값 `jdbc:mysql://127.0.0.1:3307/louie_kury_auth_dev` |
-| `MYSQL_USERNAME` | 로컬 기본값 `auth_service` |
-| `MYSQL_PASSWORD` | 로컬 MySQL을 시작할 때 지정한 서비스 사용자 비밀번호 |
-
-실제 접속 정보는 로컬 환경에만 보관합니다. 앱은 Hibernate DDL 자동 생성을 비활성화합니다.
+Spring Boot는 저장소 루트의 `.env`를 Java properties 형식으로 읽습니다. 셸 환경변수는 파일 값보다 우선합니다. 앱은 Hibernate DDL 자동 생성을 비활성화합니다.
 
 Windows PowerShell
 
@@ -45,6 +20,16 @@ macOS·Linux
 ./gradlew bootRun
 ```
 
+## 선택 사항: 로컬 MySQL 컨테이너
+
+`compose.yaml`은 로컬에서 별도의 MySQL을 실행할 때 사용합니다. 외부 MySQL 연결에는 이 컨테이너가 필요하지 않습니다. 로컬 DB를 사용하려면 `.env`에서 `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`, `MYSQL_HOST_PORT`를 설정하고 다음 명령을 실행합니다.
+
+```sh
+docker compose config --quiet
+docker compose up -d mysql
+```
+
+앱에서도 로컬 DB를 사용하려면 `MYSQL_URL`을 `jdbc:mysql://127.0.0.1:3307/louie_kury_auth_dev`로, `MYSQL_USERNAME`을 `auth_service`로 설정합니다. 포트를 바꿨다면 URL에도 같은 포트를 사용합니다. 초기화된 볼륨의 비밀번호는 `.env` 수정만으로 변경되지 않습니다.
 ## 빌드 및 테스트
 
 Windows에서는 `.\gradlew.bat test bootJar`, macOS·Linux에서는 `./gradlew test bootJar`를 실행합니다. 실행 JAR는 `build/libs/`에 생성됩니다.
