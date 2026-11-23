@@ -46,6 +46,15 @@ class WebContractTest {
             .andExpect(jsonPath("$.data").doesNotExist());
     }
 
+    @Test
+    void businessErrorUsesDefaultMessageWhenCustomMessageIsNull() throws Exception {
+        mvc.perform(get("/contract/business/default-message"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("FORBIDDEN"))
+            .andExpect(jsonPath("$.message").value("접근 권한이 없습니다."))
+            .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
     @ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings = {"custom-message", "cause"})
     void internalBusinessErrorHidesSensitiveDetails(String construction) throws Exception {
@@ -125,6 +134,10 @@ class WebContractTest {
         ApiResponse<Name> create(@Valid @RequestBody Name name) { return ApiResponse.success(name); }
         @GetMapping("/contract/business")
         void business() { throw new BusinessException(ErrorCode.FORBIDDEN, "공개 가능한 설명"); }
+        @GetMapping("/contract/business/default-message")
+        void businessWithoutCustomMessage() {
+            throw new BusinessException(ErrorCode.FORBIDDEN, (String) null);
+        }
         @GetMapping("/contract/business-internal/custom-message")
         void internalBusinessMessage() {
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "jdbc:secret-password internal-host");

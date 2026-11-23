@@ -15,6 +15,12 @@ docker compose logs --tail=50 mysql
 
 MySQL의 기본 접속 주소는 `127.0.0.1:3307`, 개발 DB는 `louie_kury_auth_dev`, 애플리케이션 사용자는 `auth_service`입니다. 3307이 이미 사용 중이면 `.env`의 `MYSQL_HOST_PORT`와 아래 `MYSQL_URL`의 포트를 함께 바꿉니다. 데이터는 `louie-kury-auth-mysql-data` 볼륨에 저장됩니다. 초기화된 볼륨의 사용자 비밀번호는 `.env`를 수정하는 것만으로 변경되지 않습니다.
 
+앱을 실행하기 전에 서비스 계정으로 개발 DB에 접속해 `SELECT 1`을 실행합니다. 비밀번호 프롬프트에는 `MYSQL_PASSWORD`로 설정한 값을 입력합니다. 결과에 `1`이 표시되면 앱 실행 단계로 넘어갑니다. 접속이 실패하면 MySQL 초기화 로그와 서비스 계정 설정을 확인한 뒤 다시 실행합니다.
+
+```sh
+docker compose exec mysql mysql --protocol=TCP -h 127.0.0.1 -u auth_service -p -D louie_kury_auth_dev -e "SELECT 1"
+```
+
 ## 애플리케이션 연결과 실행
 
 Compose는 `.env`를 읽습니다. 호스트의 Spring Boot에는 아래 값을 현재 셸이나 IDE의 실행 환경변수로 별도로 지정합니다.

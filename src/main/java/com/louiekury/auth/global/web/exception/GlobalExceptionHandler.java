@@ -26,7 +26,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (status.is5xxServerError()) {
             log.error("업무 요청 처리 중 서버 오류가 발생했습니다.", exception);
         }
-        String message = status.is5xxServerError() ? code.getMessage() : exception.getMessage();
+        String exceptionMessage = exception.getMessage();
+        String message = status.is5xxServerError() || exceptionMessage == null
+            ? code.getMessage() : exceptionMessage;
         return ResponseEntity.status(status)
             .body(ApiResponse.error(code.name(), message));
     }
