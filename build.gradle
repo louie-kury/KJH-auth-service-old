@@ -30,6 +30,44 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+sourceSets {
+    migration {
+        java.setSrcDirs(['src/migration/java'])
+        resources.setSrcDirs(['src/migration/resources'])
+    }
+}
+
+// 앱 runtimeClasspath와 분리된 마이그레이션 실행 환경이다.
+dependencies {
+    migrationImplementation 'org.liquibase:liquibase-core:5.0.4'
+    migrationImplementation 'org.liquibase.ext:liquibase-mongodb:5.0.4'
+    migrationRuntimeOnly 'org.slf4j:slf4j-nop:2.0.18'
+}
+
+dependencyManagement {
+    configurations(migrationCompileClasspath, migrationRuntimeClasspath) {
+        imports {
+            mavenBom 'org.mongodb:mongodb-driver-bom:5.9.1'
+        }
+    }
+}
+
+['mongoMigrate': 'migrate', 'mongoMigrationStatus': 'status'].each { taskName, command ->
+    tasks.register(taskName, JavaExec) {
+        group = 'database'
+        description = command == 'migrate' ? 'MongoDB 버전 마이그레이션 실행' : 'MongoDB 마이그레이션 상태 확인'
+        dependsOn tasks.named('migrationClasses')
+        classpath = sourceSets.migration.runtimeClasspath
+        mainClass = 'com.louiekury.auth.migration.MongoMigrationMain'
+        args command
+        javaLauncher = javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+    }
+}
+
 tasks.named('test') {
     useJUnitPlatform()
+    dependsOn tasks.named('migrationClasses')
+    systemProperty 'auth.mongoMigrationClasspath', sourceSets.migration.runtimeClasspath.asPath
 }

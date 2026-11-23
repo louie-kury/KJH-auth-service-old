@@ -41,6 +41,24 @@ macOS·Linux
 ./gradlew bootRun
 ```
 
+## MongoDB 마이그레이션
+
+MongoDB 변경은 앱을 시작하기 전에 별도 Gradle 명령으로 실행합니다. 현재 변경 로그는 비어 있으며, 첫 실행 시 Liquibase의 이력·잠금 컬렉션을 준비합니다. 마이그레이션 도구의 의존성은 애플리케이션 실행 JAR와 분리되어 있습니다.
+
+| 환경변수 | 설정 |
+| --- | --- |
+| `MONGODB_MIGRATION_URI` | 대상 MongoDB와 마이그레이션 권한이 있는 전용 계정의 연결 URI |
+| `MONGODB_MIGRATION_DATABASE` | 대상 서비스 DB 이름. 로컬 개발용 Atlas 예시는 `louie_kury_auth_dev` |
+
+두 값을 실행할 셸에 지정합니다. URI에 DB 이름이 있다면 환경변수의 이름과 같아야 합니다. 애플리케이션의 `MONGODB_URI`와 `MONGODB_DATABASE`는 마이그레이션 명령에 자동 전달되지 않습니다.
+
+```powershell
+.\gradlew.bat mongoMigrationStatus
+.\gradlew.bat mongoMigrate
+```
+
+macOS·Linux에서는 `./gradlew mongoMigrationStatus`와 `./gradlew mongoMigrate`를 실행합니다. 상태 확인도 최초 실행 시 Liquibase 메타데이터를 초기화하므로 메타데이터 생성·조회 권한이 필요합니다. 이미 적용된 변경셋은 이력을 바탕으로 건너뜁니다. 다른 실행이 잠금을 보유한 경우 실패할 수 있으며, 실행 중인 작업을 확인한 뒤 다시 시도합니다.
+
 ## 빌드 및 테스트
 
 Windows에서는 `.\gradlew.bat test bootJar`, macOS·Linux에서는 `./gradlew test bootJar`를 실행합니다. 실행 JAR는 `build/libs/`에 생성됩니다.
