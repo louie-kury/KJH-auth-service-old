@@ -61,3 +61,13 @@ Windows에서는 `.\gradlew.bat test bootJar`, macOS·Linux에서는 `./gradlew 
 성공 응답은 `{"data":...}`, 오류 응답은 `{"code":"...","message":"..."}` 형식입니다. HTTP 상태는 웹 계층에서 결정하며, 서버 오류에는 내부 상세를 포함하지 않습니다.
 
 JPA `BaseEntity`는 생성·수정 시각과 최초 삭제 시각을 관리합니다. JPA는 한국 시각을 `LocalDateTime`으로 다룹니다. API에서 시각을 반환할 때는 `ApiTime`으로 `+09:00` 오프셋을 적용합니다. 로그 시간대는 `Asia/Seoul`입니다.
+# 회원가입 인증번호 발송 설정
+
+`POST /api/auth/email-verifications`는 `email`, `purpose: SIGNUP`을 받아 인증번호를 발송합니다. 앞뒤 공백을 제거하고 ASCII 이메일만 허용하며 전체 대소문자를 구분하지 않습니다. Redis와 Brevo 트랜잭션 이메일 API가 필요합니다.
+
+- `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`: Redis 연결 설정입니다. 기본 호스트와 포트는 localhost와 6379입니다.
+- `VERIFICATION_EMAIL_HMAC_KEY`, `VERIFICATION_CODE_HMAC_KEY`: 서로 다른 32바이트 이상의 비밀값입니다. 저장소에 넣지 마세요.
+- `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`: Brevo API 키와 인증된 발신 주소입니다.
+- `VERIFICATION_IP_LIMIT`, `VERIFICATION_IP_WINDOW_SECONDS`: IP 발송 제한입니다. 기본값은 한 시간에 100회입니다.
+
+클라이언트 IP는 서블릿 연결의 원격 주소를 사용하며 임의의 전달 헤더는 신뢰하지 않습니다. 프록시 배포에서는 신뢰할 수 있는 프록시 설정이 없다면 모든 사용자가 같은 IP로 집계될 수 있습니다. 발송 실패 또는 결과가 불명확한 경우에도 제한 횟수는 차감되며 이전 인증번호는 무효로 유지됩니다. Brevo가 요청을 수락해도 실제 수신을 보장하지 않습니다.

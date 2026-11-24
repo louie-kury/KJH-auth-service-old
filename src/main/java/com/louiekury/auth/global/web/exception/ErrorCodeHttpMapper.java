@@ -15,6 +15,9 @@ public final class ErrorCodeHttpMapper {
             case FORBIDDEN -> HttpStatus.FORBIDDEN;
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
             case METHOD_NOT_ALLOWED -> HttpStatus.METHOD_NOT_ALLOWED;
+            case EMAIL_ALREADY_REGISTERED -> HttpStatus.CONFLICT;
+            case RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS;
+            case VERIFICATION_DELIVERY_FAILED -> HttpStatus.SERVICE_UNAVAILABLE;
             case INTERNAL_SERVER_ERROR -> HttpStatus.INTERNAL_SERVER_ERROR;
         };
     }

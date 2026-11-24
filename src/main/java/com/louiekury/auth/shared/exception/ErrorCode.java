@@ -12,6 +12,9 @@ public enum ErrorCode {
     FORBIDDEN("접근 권한이 없습니다."),
     NOT_FOUND("대상을 찾을 수 없습니다."),
     METHOD_NOT_ALLOWED("지원하지 않는 요청 방식입니다."),
+    EMAIL_ALREADY_REGISTERED("이미 가입된 이메일입니다."),
+    RATE_LIMITED("요청 횟수 제한을 초과했습니다."),
+    VERIFICATION_DELIVERY_FAILED("인증 메일을 발송할 수 없습니다."),
     INTERNAL_SERVER_ERROR("서버 내부 오류가 발생했습니다.");
 
     private final String message;
