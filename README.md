@@ -1,37 +1,44 @@
 # louie-kury-auth-service
 
-루이쿠리 인증 서비스입니다. 로컬 실행에는 JDK 17과 Docker Compose가 필요합니다. 빌드에는 저장소의 Gradle Wrapper를 사용합니다.
+루이쿠리 인증 서비스입니다. 로컬 실행에는 JDK 17이 필요하며 Gradle Wrapper를 사용합니다.
 
-## 로컬 MySQL 준비
+## 외부 MySQL 연결과 실행
 
-Docker Desktop을 시작하고, 저장소 루트에서 `.env.example`을 `.env`로 복사합니다. 기존 `.env`가 있다면 필요한 항목만 보완합니다. `MYSQL_ROOT_PASSWORD`와 `MYSQL_PASSWORD`를 각각 로컬 개발용 비밀번호로 설정한 뒤 다음 명령으로 MySQL 8.4.13을 시작합니다.
+저장소 루트에 `.env` 파일을 만들고 실제 데이터베이스 접속 정보를 설정합니다. 기존 `.env`가 있으면 필요한 항목만 확인합니다. 실제 비밀번호는 로컬에만 보관합니다.
 
-```sh
-docker compose config --quiet
-docker compose up -d mysql
-docker compose ps mysql
-docker compose logs --tail=50 mysql
+```properties
+MYSQL_URL=jdbc:mysql://<호스트>:<포트>/<스키마>
+MYSQL_USERNAME=<사용자명>
+MYSQL_PASSWORD=<비밀번호>
 ```
 
-MySQL의 기본 접속 주소는 `127.0.0.1:3307`, 개발 DB는 `louie_kury_auth_dev`, 애플리케이션 사용자는 `auth_service`입니다. 3307이 이미 사용 중이면 `.env`의 `MYSQL_HOST_PORT`와 아래 `MYSQL_URL`의 포트를 함께 바꿉니다. 데이터는 `louie-kury-auth-mysql-data` 볼륨에 저장됩니다. 초기화된 볼륨의 사용자 비밀번호는 `.env`를 수정하는 것만으로 변경되지 않습니다.
+Spring Boot는 저장소 루트의 `.env`를 Java properties 형식으로 읽습니다. 예를 들어 실제 비밀번호가 `sample\value`이면 역슬래시를 두 번 써서 다음처럼 입력합니다.
 
-앱을 실행하기 전에 서비스 계정으로 개발 DB에 접속해 `SELECT 1`을 실행합니다. 비밀번호 프롬프트에는 `MYSQL_PASSWORD`로 설정한 값을 입력합니다. 결과에 `1`이 표시되면 앱 실행 단계로 넘어갑니다. 접속이 실패하면 MySQL 초기화 로그와 서비스 계정 설정을 확인한 뒤 다시 실행합니다.
-
-```sh
-docker compose exec mysql mysql --protocol=TCP -h 127.0.0.1 -u auth_service -p -D louie_kury_auth_dev -e "SELECT 1"
+```properties
+MYSQL_PASSWORD=sample\\value
 ```
 
-## 애플리케이션 연결과 실행
+Java properties에서 역슬래시는 이스케이프 문자입니다. 값 앞의 공백은 `\ `로 입력하며, 따옴표는 값을 감싸는 구분자가 아니라 값 자체로 읽힙니다. 실제 비밀번호를 예제 파일이나 저장소에 기록하지 않습니다.
 
-Compose는 `.env`를 읽습니다. 호스트의 Spring Boot에는 아래 값을 현재 셸이나 IDE의 실행 환경변수로 별도로 지정합니다.
+셸 환경변수를 직접 지정할 수도 있습니다. 셸 환경변수는 `.env`의 값보다 우선합니다. 아래 값은 예시이므로 실제 접속 정보로 바꿉니다.
 
-| 환경변수 | 설정 |
-| --- | --- |
-| `MYSQL_URL` | 로컬 기본값 `jdbc:mysql://127.0.0.1:3307/louie_kury_auth_dev` |
-| `MYSQL_USERNAME` | 로컬 기본값 `auth_service` |
-| `MYSQL_PASSWORD` | 로컬 MySQL을 시작할 때 지정한 서비스 사용자 비밀번호 |
+Windows PowerShell
 
-실제 접속 정보는 로컬 환경에만 보관합니다. 앱은 Hibernate DDL 자동 생성을 비활성화합니다.
+```powershell
+$env:MYSQL_URL = 'jdbc:mysql://<호스트>:<포트>/<스키마>'
+$env:MYSQL_USERNAME = '<사용자명>'
+$env:MYSQL_PASSWORD = '<비밀번호>'
+```
+
+macOS·Linux
+
+```sh
+export MYSQL_URL='jdbc:mysql://<호스트>:<포트>/<스키마>'
+export MYSQL_USERNAME='<사용자명>'
+export MYSQL_PASSWORD='<비밀번호>'
+```
+
+셸에서 비밀번호에 특수문자나 따옴표가 포함되면 해당 셸의 인용 규칙을 따라 원래 값이 전달되도록 합니다. 앱은 Hibernate DDL 자동 생성을 비활성화합니다.
 
 Windows PowerShell
 
