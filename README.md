@@ -86,3 +86,16 @@ Content-Type: application/json
 성공 시 `data.emailVerificationToken`과 `data.expiresAt`을 반환합니다. 증명은 해당 이메일과 가입 목적에 연결되며 10분간 유효합니다. 가입 API에서 증명을 실제로 사용하는 기능은 후속 작업입니다. 성공한 번호는 재사용할 수 없습니다. 한 번호를 5회 틀리면 무효화하며, 이메일별 최근 1시간에 10회 실패하면 그 시점부터 1시간 동안 확인이 제한됩니다. 새 번호를 발송해도 실패 횟수나 확인 제한은 초기화되지 않습니다. 제한 중에도 발송 요청은 가능합니다.
 
 만료된 인증 ID는 발송 시점부터 최대 24시간 동안 `VERIFICATION_EXPIRED`로 처리하며, 이후 또는 기존 표식이 없는 만료 ID는 `NOT_FOUND`로 처리합니다. 이미 확인되었거나 재발송·실패로 무효화된 ID는 `NOT_FOUND`입니다.
+
+## 아이디·닉네임 중복 확인
+
+가입 전에 아래 API로 사용 가능 여부를 확인할 수 있습니다.
+
+```http
+GET /api/auth/login-ids/availability?loginId=example
+GET /api/auth/nicknames/availability?nickname=example
+```
+
+두 API 모두 사용 가능하면 `{"data":{"available":true}}`, 이미 사용 중이면 `{"data":{"available":false}}`를 반환합니다. 값이 없거나 공백뿐이거나, 로그인 아이디가 100자 또는 닉네임이 30자를 초과하면 `400 VALIDATION_ERROR`를 반환합니다. 길이는 Unicode 코드 포인트 기준입니다. 입력은 임의로 변환하지 않으며 비교는 MySQL 컬럼의 컬레이션을 따릅니다. 현재 컬레이션은 대소문자와 악센트를 구분하지 않습니다.
+
+확인 결과는 해당 값을 예약하지 않습니다. 확인 후 다른 사용자가 먼저 사용할 수 있으므로 가입 시에도 DB의 유일 제약을 확인해야 합니다.
