@@ -31,7 +31,7 @@ public class EmailVerificationController {
     @Operation(summary = "이메일 인증번호 발송")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "발송 요청 접수")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "VALIDATION_ERROR", content = @io.swagger.v3.oas.annotations.media.Content(schema = @Schema(implementation = com.louiekury.auth.global.web.response.OpenApiError.class)))
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "EMAIL_ALREADY_REGISTERED", content = @io.swagger.v3.oas.annotations.media.Content(schema = @Schema(implementation = com.louiekury.auth.global.web.response.OpenApiError.class)))
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "EMAIL_ALREADY_EXISTS", content = @io.swagger.v3.oas.annotations.media.Content(schema = @Schema(implementation = com.louiekury.auth.global.web.response.OpenApiError.class)))
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "RATE_LIMITED", content = @io.swagger.v3.oas.annotations.media.Content(schema = @Schema(implementation = com.louiekury.auth.global.web.response.OpenApiError.class)))
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "VERIFICATION_UNAVAILABLE 또는 VERIFICATION_DELIVERY_FAILED", content = @io.swagger.v3.oas.annotations.media.Content(schema = @Schema(implementation = com.louiekury.auth.global.web.response.OpenApiError.class)))
     @PostMapping
@@ -55,7 +55,9 @@ public class EmailVerificationController {
                 result.expiresAt().atZone(ZoneId.of("Asia/Seoul")).toOffsetDateTime()));
     }
 
+    @Schema(name = "EmailVerificationSendRequest")
     public record Request(@Schema(description = "필수 ASCII 이메일", example = "user@example.com", requiredMode = Schema.RequiredMode.REQUIRED) String email, @Schema(allowableValues = {"SIGNUP"}, requiredMode = Schema.RequiredMode.REQUIRED) String purpose) {}
+    @Schema(name = "EmailVerificationSendResponse")
     public record Response(String verificationId, OffsetDateTime expiresAt) {}
     public record ConfirmRequest(@Schema(description = "필수 6자리 인증번호", example = "<6-digit-code>", requiredMode = Schema.RequiredMode.REQUIRED) String code) {}
     public record ConfirmResponse(String emailVerificationToken, OffsetDateTime expiresAt) {}

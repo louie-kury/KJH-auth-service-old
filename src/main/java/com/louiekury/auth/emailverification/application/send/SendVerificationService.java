@@ -35,7 +35,7 @@ public class SendVerificationService implements SendVerificationUseCase {
         }
         String normalized = trimmed.toLowerCase(Locale.ROOT);
         if (lookup.exists(normalized)) {
-            throw new BusinessException(ErrorCode.EMAIL_ALREADY_REGISTERED);
+            throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
         String code = String.format(Locale.ROOT, "%06d", random.nextInt(1_000_000));
         String id = "verify_" + UUID.randomUUID();

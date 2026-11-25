@@ -70,7 +70,7 @@ Windows에서는 `.\gradlew.bat test bootJar`, macOS·Linux에서는 `./gradlew 
 
 ## 공통 응답과 감사 시각
 
-성공 응답은 `{"data":...}`, 오류 응답은 `{"code":"...","message":"..."}` 형식입니다. HTTP 상태는 웹 계층에서 결정하며, 서버 오류에는 내부 상세를 포함하지 않습니다.
+성공 응답은 `{"data":...}`, 오류 응답은 `{"title":"...","status":400,"detail":"...","code":"..."}` 형식입니다. `title`은 HTTP 상태 문구이고 `detail`은 안전한 오류 설명입니다. HTTP 상태는 웹 계층에서 결정하며, 서버 오류에는 내부 상세를 포함하지 않습니다.
 
 JPA `BaseEntity`는 생성·수정 시각과 최초 삭제 시각을 관리합니다. JPA는 한국 시각을 `LocalDateTime`으로 다룹니다. API에서 시각을 반환할 때는 `ApiTime`으로 `+09:00` 오프셋을 적용합니다. 로그 시간대는 `Asia/Seoul`입니다.
 # 회원가입 인증번호 발송 설정
@@ -130,14 +130,14 @@ Content-Type: application/json
   "address": "서울특별시",
   "nickname": "루이집사",
   "loginId": "loui-care",
-  "password": "<15~128자 비밀번호>",
+  "password": "<8~128자 비밀번호>",
   "email": "caregiver@example.com",
   "emailVerificationToken": "<가입용 이메일 인증 증명>"
 }
 ```
 
-- 모든 필드는 필수입니다. 성별은 `MALE` 또는 `FEMALE`, 전화번호는 숫자만 받습니다. 비밀번호는 Unicode 코드 포인트 15~128자이며 특정 문자 종류를 강제하지 않습니다. 닉네임은 최대 30자, 로그인 아이디는 최대 100자입니다.
+- 모든 필드는 필수입니다. 성별은 `MALE` 또는 `FEMALE`, 전화번호는 숫자만 받습니다. 비밀번호는 Unicode 코드 포인트 8~128자이며 특정 문자 종류를 강제하지 않습니다. 닉네임은 최대 30자, 로그인 아이디는 최대 100자입니다.
 - 신규 계정 상태는 `ACTIVE`, 프로필 유형은 `CAREGIVER`입니다. 실제 약관이 확정되기 전까지 약관 동의 상태를 임시로 설정하며, 이는 실제 약관을 보여주고 동의를 받은 증거가 아닙니다.
 - Redis에서 증명의 이메일, `SIGNUP` 목적과 만료를 검증하고 원자적으로 소비한 후 MySQL 트랜잭션에 계정·로그인 정보·프로필을 저장합니다. 소비된 증명은 다시 사용할 수 없습니다.
 - 증명 소비 후 가입이 실패하면 이메일을 다시 인증해야 합니다. 가입 성공 응답이 유실된 경우에도 재인증 후 재요청하면 이미 저장된 가입 정보로 인해 중복 오류가 발생할 수 있습니다. 동일 결과 재응답은 보장하지 않습니다.
-- 입력 오류와 무효·만료·재사용 증명은 각각 `400 VALIDATION_ERROR`, `400 INVALID_EMAIL_VERIFICATION`입니다. 가입 정보 중복은 이메일 `409 EMAIL_ALREADY_REGISTERED`, 아이디 `409 LOGIN_ID_ALREADY_EXISTS`, 닉네임 `409 NICKNAME_ALREADY_EXISTS`로 구분합니다. 여러 값이 중복되면 이메일 → 아이디 → 닉네임 순으로 하나를 반환합니다. Redis 확인 장애는 `503 VERIFICATION_UNAVAILABLE`, DB 처리나 결과 확인에 실패하면 `503 SIGNUP_PENDING`입니다.
+- 입력 오류와 무효·만료·재사용 증명은 각각 `400 VALIDATION_ERROR`, `400 INVALID_EMAIL_VERIFICATION`입니다. 가입 정보 중복은 이메일 `409 EMAIL_ALREADY_EXISTS`, 아이디 `409 LOGIN_ID_ALREADY_EXISTS`, 닉네임 `409 NICKNAME_ALREADY_EXISTS`로 구분합니다. 여러 값이 중복되면 이메일 → 아이디 → 닉네임 순으로 하나를 반환합니다. Redis 확인 장애는 `503 VERIFICATION_UNAVAILABLE`, DB 처리나 결과 확인에 실패하면 `503 SIGNUP_PENDING`입니다.

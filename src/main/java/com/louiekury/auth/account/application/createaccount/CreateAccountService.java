@@ -45,8 +45,8 @@ public class CreateAccountService implements CreateAccountUseCase {
             throw new IllegalArgumentException("password is required");
         }
         int length = password.codePointCount(0, password.length());
-        if (length < 15 || length > 128) {
-            throw new IllegalArgumentException("password must contain 15 to 128 characters");
+        if (length < 8 || length > 128) {
+            throw new IllegalArgumentException("password must contain 8 to 128 characters");
         }
     }
 

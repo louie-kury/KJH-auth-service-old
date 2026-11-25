@@ -42,7 +42,8 @@ class WebContractTest {
     void businessErrorPublishesChosenMessageWithoutData() throws Exception {
         mvc.perform(get("/contract/business"))
             .andExpect(status().isForbidden())
-            .andExpect(content().json("{\"code\":\"FORBIDDEN\",\"message\":\"공개 가능한 설명\"}"))
+            .andExpect(content().json("{\"code\":\"FORBIDDEN\",\"title\":\"Forbidden\",\"status\":403,\"detail\":\"공개 가능한 설명\"}"))
+            .andExpect(jsonPath("$.type").doesNotExist())
             .andExpect(jsonPath("$.data").doesNotExist());
     }
 
@@ -51,7 +52,8 @@ class WebContractTest {
         mvc.perform(get("/contract/business/default-message"))
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.code").value("FORBIDDEN"))
-            .andExpect(jsonPath("$.message").value("접근 권한이 없습니다."))
+            .andExpect(jsonPath("$.detail").value("접근 권한이 없습니다."))
+            .andExpect(jsonPath("$.type").doesNotExist())
             .andExpect(jsonPath("$.data").doesNotExist());
     }
 
@@ -61,7 +63,8 @@ class WebContractTest {
         String body = mvc.perform(get("/contract/business-internal/" + construction))
             .andExpect(status().isInternalServerError())
             .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
-            .andExpect(jsonPath("$.message").value("서버 내부 오류가 발생했습니다."))
+            .andExpect(jsonPath("$.detail").value("서버 내부 오류가 발생했습니다."))
+            .andExpect(jsonPath("$.type").doesNotExist())
             .andExpect(jsonPath("$.data").doesNotExist())
             .andExpect(jsonPath("$.trace").doesNotExist())
             .andReturn().getResponse().getContentAsString();
@@ -69,7 +72,7 @@ class WebContractTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"VALIDATION_ERROR,400", "UNAUTHORIZED,401", "FORBIDDEN,403", "NOT_FOUND,404", "METHOD_NOT_ALLOWED,405", "INTERNAL_SERVER_ERROR,500", "EMAIL_ALREADY_REGISTERED,409", "RATE_LIMITED,429", "VERIFICATION_DELIVERY_FAILED,503", "INVALID_VERIFICATION_CODE,400", "VERIFICATION_EXPIRED,409", "VERIFICATION_UNAVAILABLE,503"})
+    @CsvSource({"VALIDATION_ERROR,400", "UNAUTHORIZED,401", "FORBIDDEN,403", "NOT_FOUND,404", "METHOD_NOT_ALLOWED,405", "INTERNAL_SERVER_ERROR,500", "EMAIL_ALREADY_EXISTS,409", "RATE_LIMITED,429", "VERIFICATION_DELIVERY_FAILED,503", "INVALID_VERIFICATION_CODE,400", "VERIFICATION_EXPIRED,409", "VERIFICATION_UNAVAILABLE,503"})
     void errorCodesHaveExpectedHttpStatus(ErrorCode code, int expected) {
         assertThat(ErrorCodeHttpMapper.toStatus(code).value()).isEqualTo(expected);
     }
@@ -85,14 +88,18 @@ class WebContractTest {
     @Test
     void malformedJsonIsSafeBadRequest() throws Exception {
         mvc.perform(post("/contract").contentType(MediaType.APPLICATION_JSON).content("{secret-invalid"))
-            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-            .andExpect(jsonPath("$.message").value("요청 값이 올바르지 않습니다."));
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.type").doesNotExist())
+            .andExpect(jsonPath("$.title").value("Bad Request")).andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.detail").isNotEmpty()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+            .andExpect(jsonPath("$.detail").value("요청 값이 올바르지 않습니다."));
     }
 
     @Test
     void invalidInputIsBadRequest() throws Exception {
         mvc.perform(post("/contract").contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"\"}"))
-            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.type").doesNotExist())
+            .andExpect(jsonPath("$.title").value("Bad Request")).andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.detail").isNotEmpty()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
     @Test
@@ -105,6 +112,10 @@ class WebContractTest {
     void unsupportedMethodKeepsAllowHeader() throws Exception {
         String allow = mvc.perform(delete("/contract"))
             .andExpect(status().isMethodNotAllowed()).andExpect(header().exists("Allow"))
+            .andExpect(jsonPath("$.type").doesNotExist())
+            .andExpect(jsonPath("$.title").value("Method Not Allowed"))
+            .andExpect(jsonPath("$.status").value(405))
+            .andExpect(jsonPath("$.detail").isNotEmpty())
             .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"))
             .andReturn().getResponse().getHeader("Allow");
         assertThat(allow).contains("GET", "POST");
@@ -121,7 +132,8 @@ class WebContractTest {
     void unexpectedErrorHidesInternalDetails() throws Exception {
         mvc.perform(get("/contract/unexpected"))
             .andExpect(status().isInternalServerError())
-            .andExpect(content().json("{\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"서버 내부 오류가 발생했습니다.\"}"))
+            .andExpect(content().json("{\"code\":\"INTERNAL_SERVER_ERROR\",\"title\":\"Internal Server Error\",\"status\":500,\"detail\":\"서버 내부 오류가 발생했습니다.\"}"))
+            .andExpect(jsonPath("$.type").doesNotExist())
             .andExpect(jsonPath("$.data").doesNotExist())
             .andExpect(jsonPath("$.trace").doesNotExist());
     }

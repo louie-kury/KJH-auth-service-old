@@ -33,7 +33,7 @@ public class SignupService implements SignupUseCase {
                 var conflict = store.findAccountConflict(command);
                 if (conflict.isPresent()) {
                     ErrorCode code = switch (conflict.get()) {
-                        case EMAIL -> ErrorCode.EMAIL_ALREADY_REGISTERED;
+                        case EMAIL -> ErrorCode.EMAIL_ALREADY_EXISTS;
                         case LOGIN_ID -> ErrorCode.LOGIN_ID_ALREADY_EXISTS;
                         case NICKNAME -> ErrorCode.NICKNAME_ALREADY_EXISTS;
                     };

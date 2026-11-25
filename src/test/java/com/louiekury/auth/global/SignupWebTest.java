@@ -49,6 +49,53 @@ class SignupWebTest {
                 .contentType(MediaType.APPLICATION_JSON).content(request))
             .andExpect(status().isCreated());
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {8, 128})
+    void passwordLengthBoundariesAreAccepted(int length) throws Exception {
+        when(signup.signup(any())).thenReturn("member_01");
+        mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON)
+            .content(REQUEST.replace("long-password-12345", "한".repeat(length))))
+            .andExpect(status().isCreated());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {7, 129})
+    void passwordOutsideLengthBoundariesHasSpecificDetail(int length) throws Exception {
+        mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON)
+            .content(REQUEST.replace("long-password-12345", "한".repeat(length))))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.type").doesNotExist())
+            .andExpect(jsonPath("$.title").value("Bad Request"))
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.detail", org.hamcrest.Matchers.containsString("password")))
+            .andExpect(jsonPath("$.detail", org.hamcrest.Matchers.containsString("8")))
+            .andExpect(jsonPath("$.detail", org.hamcrest.Matchers.containsString("128")))
+            .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        verifyNoInteractions(signup);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {8, 128})
+    void supplementaryUnicodePasswordUsesCodePoints(int length) throws Exception {
+        when(signup.signup(any())).thenReturn("member_01");
+        mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON)
+            .content(REQUEST.replace("long-password-12345", "😀".repeat(length))))
+            .andExpect(status().isCreated());
+    }
+
+    @Test
+    void duplicateEmailHasConflictProblem() throws Exception {
+        ErrorCode duplicateEmail = ErrorCode.valueOf("EMAIL_ALREADY_EXISTS");
+        when(signup.signup(any())).thenThrow(new BusinessException(duplicateEmail));
+        mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON).content(REQUEST))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.type").doesNotExist())
+            .andExpect(jsonPath("$.title").value("Conflict"))
+            .andExpect(jsonPath("$.status").value(409))
+            .andExpect(jsonPath("$.detail").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("EMAIL_ALREADY_EXISTS"));
+    }
+
     @Test
     void signupDoesNotRequireIdempotencyKey() throws Exception {
         when(signup.signup(any())).thenReturn("member_01");
