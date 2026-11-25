@@ -1,5 +1,6 @@
 package com.louiekury.auth.emailverification.adapter.out.redis;
 
+import com.louiekury.auth.emailverification.application.port.out.SignupProofVerifier;
 import com.louiekury.auth.emailverification.application.port.out.VerificationConfirmationStore;
 import com.louiekury.auth.emailverification.application.port.out.VerificationStore;
 import com.louiekury.auth.shared.exception.BusinessException;
@@ -9,6 +10,8 @@ import java.security.GeneralSecurityException;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -18,7 +21,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 @Component
-public class RedisVerificationStore implements VerificationStore, VerificationConfirmationStore {
+public class RedisVerificationStore implements VerificationStore, VerificationConfirmationStore, SignupProofVerifier {
     private static final String CHALLENGE = "email-verification:challenge:";
     private static final String MARKER = "email-verification:marker:";
     private static final String PROOF = "email-verification:proof:";
@@ -81,6 +84,16 @@ public class RedisVerificationStore implements VerificationStore, VerificationCo
         if redis.call('EXISTS', KEYS[2]) == 1 then redis.call('SET', KEYS[2], 'used', 'KEEPTTL') end
         return now + 600
         """, Long.class);
+    private static final DefaultRedisScript<Long> VERIFY_SIGNUP_PROOF = new DefaultRedisScript<>("""
+        if redis.call('EXISTS', KEYS[1]) == 0 then return -1 end
+        local fields = redis.call('HMGET', KEYS[1], 'email', 'purpose', 'expiresAt')
+        local expires = tonumber(fields[3])
+        if not fields[1] or not fields[2] or not expires or expires ~= math.floor(expires) then return -2 end
+        if fields[1] ~= ARGV[1] or fields[2] ~= 'SIGNUP' then return -1 end
+        local now = tonumber(redis.call('TIME')[1])
+        if expires <= now then return -1 end
+        return expires
+        """, Long.class);
     private final StringRedisTemplate redis;
     private final String emailKey;
     private final String codeKey;
@@ -133,6 +146,27 @@ public class RedisVerificationStore implements VerificationStore, VerificationCo
             if (result == -3) throw new BusinessException(ErrorCode.RATE_LIMITED);
             if (result == -4) throw new BusinessException(ErrorCode.INVALID_VERIFICATION_CODE);
             return Instant.ofEpochSecond(result);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new BusinessException(ErrorCode.VERIFICATION_UNAVAILABLE);
+        }
+    }
+
+    @Override
+    public Optional<VerifiedProof> verifySignupProof(String email, String token) {
+        validateKeys(ErrorCode.VERIFICATION_UNAVAILABLE);
+        if (email == null || email.isBlank() || token == null || !token.matches("[A-Za-z0-9_-]{43}")) {
+            return Optional.empty();
+        }
+        String proofDigest = hmac(codeKey, "proof:" + token);
+        String emailDigest = hmac(emailKey, email.trim().toLowerCase(Locale.ROOT));
+        try {
+            Long result = redis.execute(VERIFY_SIGNUP_PROOF, List.of(PROOF + proofDigest), emailDigest);
+            if (result == null || result == -2) throw new BusinessException(ErrorCode.VERIFICATION_UNAVAILABLE);
+            if (result == -1) return Optional.empty();
+            if (result <= 0) throw new BusinessException(ErrorCode.VERIFICATION_UNAVAILABLE);
+            return Optional.of(new VerifiedProof(proofDigest, Instant.ofEpochSecond(result)));
         } catch (BusinessException e) {
             throw e;
         } catch (RuntimeException e) {

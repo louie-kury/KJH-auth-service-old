@@ -42,3 +42,6 @@ verification:
 logging:
   pattern:
     dateformat: yyyy-MM-dd'T'HH:mm:ss.SSSXXX,Asia/Seoul
+
+signup:
+  idempotency-hmac-key: ${SIGNUP_IDEMPOTENCY_HMAC_KEY:}
