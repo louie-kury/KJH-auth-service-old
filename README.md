@@ -104,15 +104,11 @@ GET /api/auth/nicknames/availability?nickname=example
 
 `POST /api/auth/signup`은 가입용 이메일 인증 증명과 가입 정보를 받아 MySQL의 계정, 로그인 정보, 프로필을 저장합니다. 성공하면 `201 Created`, `Location: /api/members/me`와 `{"data":{"memberId":"<생성된 UUID>"}}`를 반환합니다. 로그인은 별도 API에서 수행합니다.
 
-가입 전에 이메일 인증번호 발송·확인을 완료하고 `emailVerificationToken`을 준비합니다. Redis 연결 및 인증번호 API에 필요한 이메일·코드 HMAC 키 외에 다음 설정과 MySQL 스키마가 필요합니다.
-
-- `SIGNUP_IDEMPOTENCY_HMAC_KEY`: UTF-8 기준 32바이트 이상이며 `VERIFICATION_EMAIL_HMAC_KEY`, `VERIFICATION_CODE_HMAC_KEY`와 각각 다른 비밀값입니다. 로컬 환경변수 또는 `.env`에 설정하고 저장소나 로그에 남기지 않습니다.
-- MySQL 대상 스키마에 기존 ERD의 `account`, `login_credential`, `user_profile` 테이블과 `src/main/resources/db/manual/001-signup-idempotency.sql`의 테이블이 필요합니다. 이 스크립트는 자동 실행되지 않으며 대상 스키마·권한을 확인한 뒤 명시적으로 적용해야 합니다. 실제 공유 DB에는 검토 없이 적용하지 마세요.
+가입 전에 이메일 인증번호 발송·확인을 완료하고 `emailVerificationToken`을 준비합니다. Redis 연결과 인증번호 API의 이메일·코드 HMAC 키, MySQL의 `account`, `login_credential`, `user_profile` 테이블이 필요합니다.
 
 ```http
 POST /api/auth/signup
 Content-Type: application/json
-Idempotency-Key: <요청별 충분히 무작위인 고유 키>
 
 {
   "name": "김보호",
@@ -129,8 +125,7 @@ Idempotency-Key: <요청별 충분히 무작위인 고유 키>
 ```
 
 - 모든 필드는 필수입니다. 성별은 `MALE` 또는 `FEMALE`, 전화번호는 숫자만 받습니다. 비밀번호는 Unicode 코드 포인트 15~128자이며 특정 문자 종류를 강제하지 않습니다. 닉네임은 최대 30자, 로그인 아이디는 최대 100자입니다.
-- 신규 계정 상태는 `ACTIVE`, 프로필 유형은 `USER`입니다. 실제 약관이 확정되기 전까지 약관 동의 상태를 임시로 설정하며, 이는 실제 약관을 보여주고 동의를 받은 증거가 아닙니다.
-- 인증 증명은 이메일과 `SIGNUP` 목적 및 만료를 Redis에서 확인합니다. 저장 시 증명 확인값·요청 확인값과 계정·로그인 정보·프로필을 MySQL 한 트랜잭션에 기록하며, 다른 가입에서 같은 증명을 재사용할 수 없습니다.
-- 요청마다 새로운 무작위 `Idempotency-Key`를 만드세요. 가입 성공 후 최소 24시간 동안 같은 키와 완전히 같은 입력·증명으로 재시도하면 동일한 결과를 반환하며, 같은 키에 다른 입력을 보내면 `409 IDEMPOTENCY_CONFLICT`입니다. 저장 전 Redis 증명이 만료되거나 유실되면 다시 인증해야 합니다.
-- 가입 완료 기록의 만료 시각은 저장 완료 처리 시점 기준 25시간입니다. 앱 실행 중 기본적으로 시작 60초 후부터 15분 간격으로 만료된 기록을 최대 500건씩 정리합니다. 정지, 오류, 대기 건수에 따라 실제 삭제는 늦어질 수 있으며 실패 시 다음 주기에 재시도합니다. 만료 이후에는 기존 결과 반환을 보장하지 않습니다.
+- 신규 계정 상태는 `ACTIVE`, 프로필 유형은 `CAREGIVER`입니다. 실제 약관이 확정되기 전까지 약관 동의 상태를 임시로 설정하며, 이는 실제 약관을 보여주고 동의를 받은 증거가 아닙니다.
+- Redis에서 증명의 이메일, `SIGNUP` 목적과 만료를 검증하고 원자적으로 소비한 후 MySQL 트랜잭션에 계정·로그인 정보·프로필을 저장합니다. 소비된 증명은 다시 사용할 수 없습니다.
+- 증명 소비 후 가입이 실패하면 이메일을 다시 인증해야 합니다. 가입 성공 응답이 유실된 경우에도 재인증 후 재요청하면 이미 저장된 가입 정보로 인해 중복 오류가 발생할 수 있습니다. 동일 결과 재응답은 보장하지 않습니다.
 - 입력 오류와 무효·만료·재사용 증명은 각각 `400 VALIDATION_ERROR`, `400 INVALID_EMAIL_VERIFICATION`입니다. 가입 정보 중복은 이메일 `409 EMAIL_ALREADY_REGISTERED`, 아이디 `409 LOGIN_ID_ALREADY_EXISTS`, 닉네임 `409 NICKNAME_ALREADY_EXISTS`로 구분합니다. 여러 값이 중복되면 이메일 → 아이디 → 닉네임 순으로 하나를 반환합니다. Redis 확인 장애는 `503 VERIFICATION_UNAVAILABLE`, DB 처리나 결과 확인에 실패하면 `503 SIGNUP_PENDING`입니다.

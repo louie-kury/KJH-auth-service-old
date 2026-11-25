@@ -17,7 +17,7 @@ public final class ErrorCodeHttpMapper {
             case METHOD_NOT_ALLOWED -> HttpStatus.METHOD_NOT_ALLOWED;
             case EMAIL_ALREADY_REGISTERED, LOGIN_ID_ALREADY_EXISTS, NICKNAME_ALREADY_EXISTS -> HttpStatus.CONFLICT;
             case INVALID_EMAIL_VERIFICATION -> HttpStatus.BAD_REQUEST;
-            case ACCOUNT_CONFLICT, IDEMPOTENCY_CONFLICT -> HttpStatus.CONFLICT;
+            case ACCOUNT_CONFLICT -> HttpStatus.CONFLICT;
             case SIGNUP_PENDING -> HttpStatus.SERVICE_UNAVAILABLE;
             case INVALID_VERIFICATION_CODE -> HttpStatus.BAD_REQUEST;
             case VERIFICATION_EXPIRED -> HttpStatus.CONFLICT;

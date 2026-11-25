@@ -31,36 +31,53 @@ class SignupProofRedisIntegrationTest {
     @AfterAll
     static void cleanup() { if (factory != null) factory.destroy(); }
 
-    @Test
-    void issuedProofValidatesEmailAndCanBeRecheckedWithoutConsumption() {
-        String email = UUID.randomUUID() + "@example.com";
+    private String issue(String email, String token) throws Exception {
         String id = UUID.randomUUID().toString();
-        String token = "A".repeat(43);
         store.reserve(email, "123456", id, "ip-" + id);
         store.confirm(id, "123456", token);
-        var proof = store.verifySignupProof(email.toUpperCase(), token);
-        assertThat(proof).isPresent();
-        assertThat(proof.orElseThrow().expiresAt()).isAfter(Instant.now());
-        assertThat(store.verifySignupProof(email, token)).isEqualTo(proof);
-        assertThat(store.verifySignupProof("other@example.com", token)).isEmpty();
-        assertThat(store.verifySignupProof(email, "B".repeat(43))).isEmpty();
-        redis.delete("email-verification:proof:" + proof.orElseThrow().proofDigest());
-        assertThat(store.verifySignupProof(email, token)).isEmpty();
+        var mac = javax.crypto.Mac.getInstance("HmacSHA256");
+        mac.init(new javax.crypto.spec.SecretKeySpec("code-key-0123456789012345678901234567890".getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
+        return "email-verification:proof:" + java.util.HexFormat.of().formatHex(mac.doFinal(("proof:" + token).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
     }
 
     @Test
-    void nonSignupPurposeAndExpiredProofAreRejected() {
+    void proofChecksEmailAndIsConsumedOnce() throws Exception {
         String email = UUID.randomUUID() + "@example.com";
-        String id = UUID.randomUUID().toString();
-        String token = "C".repeat(43);
-        store.reserve(email, "123456", id, "ip-" + id);
-        store.confirm(id, "123456", token);
-        String proofKey = "email-verification:proof:" + store.verifySignupProof(email, token).orElseThrow().proofDigest();
-        redis.opsForHash().put(proofKey, "purpose", "EMAIL_CHANGE");
-        assertThat(store.verifySignupProof(email, token)).isEmpty();
-        redis.opsForHash().put(proofKey, "purpose", "SIGNUP");
-        redis.opsForHash().put(proofKey, "expiresAt", Long.toString(Instant.now().minusSeconds(1).getEpochSecond()));
-        assertThat(store.verifySignupProof(email, token)).isEmpty();
-        redis.delete(proofKey);
+        String token = UUID.randomUUID().toString() + "abcdefg";
+        String key = issue(email, token);
+        try {
+            assertThat(store.consumeSignupProof("other@example.com", token)).isFalse();
+            assertThat(store.consumeSignupProof(email.toUpperCase(), token)).isTrue();
+            assertThat(store.consumeSignupProof(email, token)).isFalse();
+        } finally { redis.delete(key); }
+    }
+
+    @Test
+    void nonSignupPurposeAndExpiredProofAreRejected() throws Exception {
+        String email = UUID.randomUUID() + "@example.com";
+        String token = UUID.randomUUID().toString() + "abcdefg";
+        String key = issue(email, token);
+        try {
+            redis.opsForHash().put(key, "purpose", "EMAIL_CHANGE");
+            assertThat(store.consumeSignupProof(email, token)).isFalse();
+            redis.opsForHash().put(key, "purpose", "SIGNUP");
+            redis.opsForHash().put(key, "expiresAt", Long.toString(Instant.now().minusSeconds(1).getEpochSecond()));
+            assertThat(store.consumeSignupProof(email, token)).isFalse();
+        } finally { redis.delete(key); }
+    }
+
+    @Test
+    void simultaneousConsumptionSucceedsExactlyOnce() throws Exception {
+        String email = UUID.randomUUID() + "@example.com";
+        String token = UUID.randomUUID().toString() + "abcdefg";
+        String key = issue(email, token);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try {
+            var a = pool.submit(() -> { start.await(); return store.consumeSignupProof(email, token); });
+            var b = pool.submit(() -> { start.await(); return store.consumeSignupProof(email, token); });
+            start.countDown();
+            assertThat(java.util.List.of(a.get(), b.get())).containsExactlyInAnyOrder(true, false);
+        } finally { pool.shutdownNow(); redis.delete(key); }
     }
 }

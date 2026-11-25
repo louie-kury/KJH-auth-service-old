@@ -2,12 +2,7 @@ package com.louiekury.auth.account.adapter.out.persistence;
 
 import com.louiekury.auth.account.application.signup.SignupCommand;
 import com.louiekury.auth.account.application.signup.SignupStore;
-import com.louiekury.auth.shared.exception.BusinessException;
-import com.louiekury.auth.shared.exception.ErrorCode;
 import java.sql.Statement;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -28,18 +23,6 @@ public class SignupPersistenceAdapter implements SignupStore {
     }
 
     @Override
-    public Optional<CompletedSignup> findCompleted(byte[] keyDigest) {
-        return jdbc.query("SELECT request_digest, member_uuid FROM signup_idempotency WHERE key_digest = ? AND expires_at > UTC_TIMESTAMP(6)",
-                (rs, row) -> new CompletedSignup(rs.getBytes(1), rs.getString(2)), keyDigest).stream().findFirst();
-    }
-
-    @Override
-    public boolean isProofUsed(byte[] proofDigest) {
-        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM signup_idempotency WHERE proof_digest = ?", Integer.class, proofDigest);
-        return count != null && count > 0;
-    }
-
-    @Override
     public Optional<AccountConflict> findAccountConflict(SignupCommand command) {
         Integer conflict = jdbc.queryForObject("SELECT CASE WHEN EXISTS(SELECT 1 FROM account WHERE email = ?) THEN 1 "
                         + "WHEN EXISTS(SELECT 1 FROM login_credential WHERE login_id = ?) THEN 2 "
@@ -54,16 +37,9 @@ public class SignupPersistenceAdapter implements SignupStore {
         };
     }
     @Override
-    public String create(byte[] keyDigest, byte[] requestDigest, byte[] proofDigest, Instant proofExpiresAt,
-                         SignupCommand command, String passwordHash, String accountStatus, String userType) {
+    public String create(SignupCommand command, String passwordHash, String accountStatus, String userType) {
         return transaction.execute(status -> {
-            // Reclaim the key only after its replay window, while holding any affected row lock.
-            jdbc.update("DELETE FROM signup_idempotency WHERE key_digest = ? AND expires_at <= UTC_TIMESTAMP(6)", keyDigest);
             String memberId = UUID.randomUUID().toString();
-            int inserted = jdbc.update("INSERT INTO signup_idempotency (key_digest, proof_digest, request_digest, member_uuid, completed_at, expires_at) "
-                            + "SELECT ?, ?, ?, ?, UTC_TIMESTAMP(6), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 25 HOUR) WHERE ? > UTC_TIMESTAMP(6)",
-                    keyDigest, proofDigest, requestDigest, memberId, LocalDateTime.ofInstant(proofExpiresAt, ZoneOffset.UTC));
-            if (inserted != 1) throw new BusinessException(ErrorCode.INVALID_EMAIL_VERIFICATION);
             GeneratedKeyHolder keyHolder = new GeneratedKeyHolder();
             jdbc.update(connection -> {
                 var statement = connection.prepareStatement("INSERT INTO account (uuid,status,name,phone_number,gender,birth_date,address,email,terms_agreed,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,NOW(),NOW())", Statement.RETURN_GENERATED_KEYS);
@@ -84,7 +60,6 @@ public class SignupPersistenceAdapter implements SignupStore {
                     accountId.longValue(), command.loginId(), passwordHash);
             jdbc.update("INSERT INTO user_profile (account_id,nickname,user_type,created_at,updated_at) VALUES (?,?,?,NOW(),NOW())",
                     accountId.longValue(), command.nickname(), userType);
-            jdbc.update("UPDATE signup_idempotency SET completed_at = UTC_TIMESTAMP(6), expires_at = DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 25 HOUR) WHERE key_digest = ?", keyDigest);
             return memberId;
         });
     }

@@ -33,8 +33,8 @@ class SignupWebTest {
 
     @Test
     void signupReturnsCreatedMemberAndLocation() throws Exception {
-        when(signup.signup(eq("request-key"), any())).thenReturn("member_01");
-        mvc.perform(post("/api/auth/signup").header("Idempotency-Key", "request-key")
+        when(signup.signup(any())).thenReturn("member_01");
+        mvc.perform(post("/api/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON).content(REQUEST))
             .andExpect(status().isCreated())
             .andExpect(header().string("Location", "/api/members/me"))
@@ -43,40 +43,31 @@ class SignupWebTest {
 
     @Test
     void allSpacePasswordOfValidLengthIsAccepted() throws Exception {
-        when(signup.signup(eq("space-key"), any())).thenReturn("member_01");
+        when(signup.signup(any())).thenReturn("member_01");
         String request = REQUEST.replace("long-password-12345", "               ");
-        mvc.perform(post("/api/auth/signup").header("Idempotency-Key", "space-key")
+        mvc.perform(post("/api/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON).content(request))
             .andExpect(status().isCreated());
     }
     @Test
-    void missingIdempotencyKeyIsRejected() throws Exception {
+    void signupDoesNotRequireIdempotencyKey() throws Exception {
+        when(signup.signup(any())).thenReturn("member_01");
         mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON).content(REQUEST))
-            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
-        verifyNoInteractions(signup);
+            .andExpect(status().isCreated());
     }
 
     @Test
     void missingRequiredInputIsRejected() throws Exception {
-        mvc.perform(post("/api/auth/signup").header("Idempotency-Key", "request-key")
+        mvc.perform(post("/api/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON).content("{}"))
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
     @Test
-    void changedRequestWithSameKeyReturnsConflict() throws Exception {
-        when(signup.signup(eq("request-key"), any()))
-            .thenThrow(new BusinessException(ErrorCode.IDEMPOTENCY_CONFLICT));
-        mvc.perform(post("/api/auth/signup").header("Idempotency-Key", "request-key")
-                .contentType(MediaType.APPLICATION_JSON).content(REQUEST))
-            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("IDEMPOTENCY_CONFLICT"));
-    }
-
-    @Test
     void invalidEmailProofDoesNotCreateAccount() throws Exception {
-        when(signup.signup(eq("request-key"), any()))
+        when(signup.signup(any()))
             .thenThrow(new BusinessException(ErrorCode.INVALID_EMAIL_VERIFICATION));
-        mvc.perform(post("/api/auth/signup").header("Idempotency-Key", "request-key")
+        mvc.perform(post("/api/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON).content(REQUEST))
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_EMAIL_VERIFICATION"));
     }

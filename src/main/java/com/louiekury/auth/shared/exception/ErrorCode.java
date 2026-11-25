@@ -17,7 +17,6 @@ public enum ErrorCode {
     NICKNAME_ALREADY_EXISTS("이미 사용 중인 닉네임입니다."),
     INVALID_EMAIL_VERIFICATION("이메일 인증 증명이 올바르지 않습니다."),
     ACCOUNT_CONFLICT("이미 사용 중인 가입 정보가 있습니다."),
-    IDEMPOTENCY_CONFLICT("동일한 요청 키로 다른 입력을 처리할 수 없습니다."),
     SIGNUP_PENDING("가입 요청을 처리할 수 없습니다."),
     INVALID_VERIFICATION_CODE("인증번호가 올바르지 않습니다."),
     VERIFICATION_EXPIRED("인증번호가 만료되었습니다."),

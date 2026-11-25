@@ -11,7 +11,6 @@ import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -84,7 +83,7 @@ public class RedisVerificationStore implements VerificationStore, VerificationCo
         if redis.call('EXISTS', KEYS[2]) == 1 then redis.call('SET', KEYS[2], 'used', 'KEEPTTL') end
         return now + 600
         """, Long.class);
-    private static final DefaultRedisScript<Long> VERIFY_SIGNUP_PROOF = new DefaultRedisScript<>("""
+    private static final DefaultRedisScript<Long> CONSUME_SIGNUP_PROOF = new DefaultRedisScript<>("""
         if redis.call('EXISTS', KEYS[1]) == 0 then return -1 end
         local fields = redis.call('HMGET', KEYS[1], 'email', 'purpose', 'expiresAt')
         local expires = tonumber(fields[3])
@@ -92,7 +91,8 @@ public class RedisVerificationStore implements VerificationStore, VerificationCo
         if fields[1] ~= ARGV[1] or fields[2] ~= 'SIGNUP' then return -1 end
         local now = tonumber(redis.call('TIME')[1])
         if expires <= now then return -1 end
-        return expires
+        redis.call('DEL', KEYS[1])
+        return 1
         """, Long.class);
     private final StringRedisTemplate redis;
     private final String emailKey;
@@ -154,19 +154,19 @@ public class RedisVerificationStore implements VerificationStore, VerificationCo
     }
 
     @Override
-    public Optional<VerifiedProof> verifySignupProof(String email, String token) {
+    public boolean consumeSignupProof(String email, String token) {
         validateKeys(ErrorCode.VERIFICATION_UNAVAILABLE);
         if (email == null || email.isBlank() || token == null || !token.matches("[A-Za-z0-9_-]{43}")) {
-            return Optional.empty();
+            return false;
         }
         String proofDigest = hmac(codeKey, "proof:" + token);
         String emailDigest = hmac(emailKey, email.trim().toLowerCase(Locale.ROOT));
         try {
-            Long result = redis.execute(VERIFY_SIGNUP_PROOF, List.of(PROOF + proofDigest), emailDigest);
+            Long result = redis.execute(CONSUME_SIGNUP_PROOF, List.of(PROOF + proofDigest), emailDigest);
             if (result == null || result == -2) throw new BusinessException(ErrorCode.VERIFICATION_UNAVAILABLE);
-            if (result == -1) return Optional.empty();
+            if (result == -1) return false;
             if (result <= 0) throw new BusinessException(ErrorCode.VERIFICATION_UNAVAILABLE);
-            return Optional.of(new VerifiedProof(proofDigest, Instant.ofEpochSecond(result)));
+            return true;
         } catch (BusinessException e) {
             throw e;
         } catch (RuntimeException e) {
