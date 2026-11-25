@@ -133,4 +133,4 @@ Idempotency-Key: <요청별 충분히 무작위인 고유 키>
 - 인증 증명은 이메일과 `SIGNUP` 목적 및 만료를 Redis에서 확인합니다. 저장 시 증명 확인값·요청 확인값과 계정·로그인 정보·프로필을 MySQL 한 트랜잭션에 기록하며, 다른 가입에서 같은 증명을 재사용할 수 없습니다.
 - 요청마다 새로운 무작위 `Idempotency-Key`를 만드세요. 가입 성공 후 최소 24시간 동안 같은 키와 완전히 같은 입력·증명으로 재시도하면 동일한 결과를 반환하며, 같은 키에 다른 입력을 보내면 `409 IDEMPOTENCY_CONFLICT`입니다. 저장 전 Redis 증명이 만료되거나 유실되면 다시 인증해야 합니다.
 - 가입 완료 기록의 만료 시각은 저장 완료 처리 시점 기준 25시간입니다. 앱 실행 중 기본적으로 시작 60초 후부터 15분 간격으로 만료된 기록을 최대 500건씩 정리합니다. 정지, 오류, 대기 건수에 따라 실제 삭제는 늦어질 수 있으며 실패 시 다음 주기에 재시도합니다. 만료 이후에는 기존 결과 반환을 보장하지 않습니다.
-- 입력 오류와 무효·만료·재사용 증명은 각각 `400 VALIDATION_ERROR`, `400 INVALID_EMAIL_VERIFICATION`입니다. 중복 계정은 `409 ACCOUNT_CONFLICT`입니다. Redis 확인 장애는 `503 VERIFICATION_UNAVAILABLE`, DB 처리나 결과 확인에 실패하면 `503 SIGNUP_PENDING`입니다.
+- 입력 오류와 무효·만료·재사용 증명은 각각 `400 VALIDATION_ERROR`, `400 INVALID_EMAIL_VERIFICATION`입니다. 가입 정보 중복은 이메일 `409 EMAIL_ALREADY_REGISTERED`, 아이디 `409 LOGIN_ID_ALREADY_EXISTS`, 닉네임 `409 NICKNAME_ALREADY_EXISTS`로 구분합니다. 여러 값이 중복되면 이메일 → 아이디 → 닉네임 순으로 하나를 반환합니다. Redis 확인 장애는 `503 VERIFICATION_UNAVAILABLE`, DB 처리나 결과 확인에 실패하면 `503 SIGNUP_PENDING`입니다.

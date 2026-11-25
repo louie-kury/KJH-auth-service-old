@@ -40,10 +40,18 @@ public class SignupPersistenceAdapter implements SignupStore {
     }
 
     @Override
-    public boolean accountConflicts(SignupCommand command) {
-        Integer count = jdbc.queryForObject("SELECT (EXISTS(SELECT 1 FROM account WHERE email = ?) OR EXISTS(SELECT 1 FROM login_credential WHERE login_id = ?) OR EXISTS(SELECT 1 FROM user_profile WHERE nickname = ?))",
+    public Optional<AccountConflict> findAccountConflict(SignupCommand command) {
+        Integer conflict = jdbc.queryForObject("SELECT CASE WHEN EXISTS(SELECT 1 FROM account WHERE email = ?) THEN 1 "
+                        + "WHEN EXISTS(SELECT 1 FROM login_credential WHERE login_id = ?) THEN 2 "
+                        + "WHEN EXISTS(SELECT 1 FROM user_profile WHERE nickname = ?) THEN 3 ELSE 0 END",
                 Integer.class, command.email().trim(), command.loginId(), command.nickname());
-        return count != null && count > 0;
+        if (conflict == null || conflict == 0) return Optional.empty();
+        return switch (conflict) {
+            case 1 -> Optional.of(AccountConflict.EMAIL);
+            case 2 -> Optional.of(AccountConflict.LOGIN_ID);
+            case 3 -> Optional.of(AccountConflict.NICKNAME);
+            default -> throw new IllegalStateException("Unexpected account conflict classification");
+        };
     }
     @Override
     public String create(byte[] keyDigest, byte[] requestDigest, byte[] proofDigest, Instant proofExpiresAt,

@@ -43,7 +43,15 @@ public class SignupService implements SignupUseCase {
                 completed = store.findCompleted(keyDigest);
                 if (completed.isPresent()) return replay(completed.get(), requestDigest);
                 if (store.isProofUsed(proofDigest)) throw new BusinessException(ErrorCode.INVALID_EMAIL_VERIFICATION);
-                if (store.accountConflicts(command)) throw new BusinessException(ErrorCode.ACCOUNT_CONFLICT);
+                var conflict = store.findAccountConflict(command);
+                if (conflict.isPresent()) {
+                    ErrorCode code = switch (conflict.get()) {
+                        case EMAIL -> ErrorCode.EMAIL_ALREADY_REGISTERED;
+                        case LOGIN_ID -> ErrorCode.LOGIN_ID_ALREADY_EXISTS;
+                        case NICKNAME -> ErrorCode.NICKNAME_ALREADY_EXISTS;
+                    };
+                    throw new BusinessException(code);
+                }
                 throw new BusinessException(ErrorCode.SIGNUP_PENDING);
             }
         } catch (DataAccessException e) {
