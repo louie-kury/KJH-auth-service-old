@@ -52,6 +52,18 @@ macOS·Linux
 ./gradlew bootRun
 ```
 
+## 로컬 Swagger UI
+
+위 MySQL 설정과 아래 이메일 인증·가입에 필요한 Redis, HMAC 키 및 메일 발송 설정을 준비한 뒤 저장소 루트에서 `local` 프로필로 실행합니다.
+
+```powershell
+.\gradlew.bat bootRun --args='--spring.profiles.active=local'
+```
+
+macOS·Linux에서는 `./gradlew bootRun --args='--spring.profiles.active=local'`을 실행합니다. 기본 포트 기준 UI는 `http://localhost:8080/swagger-ui/index.html`, OpenAPI JSON은 `http://localhost:8080/v3/api-docs`입니다. 포트를 변경했다면 해당 포트를 사용합니다. 기본 설정에서는 두 문서 엔드포인트가 비활성화되며 `local` 프로필에서 활성화됩니다.
+
+UI의 **Try it out**과 **Execute**는 실제 API 요청을 보냅니다. 이메일 발송과 회원가입은 실제 외부 메일 발송 및 DB 저장을 일으킬 수 있으므로 격리된 테스트 환경과 테스트 수신자를 사용하세요. 가입 요청에는 이메일 인증 증명이 필요합니다. 각 API의 설정과 요청 조건은 아래 안내를 참고하세요.
+
 ## 빌드 및 테스트
 
 Windows에서는 `.\gradlew.bat test bootJar`, macOS·Linux에서는 `./gradlew test bootJar`를 실행합니다. 실행 JAR는 `build/libs/`에 생성됩니다.
