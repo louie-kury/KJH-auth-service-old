@@ -39,6 +39,7 @@ public class SignupController {
         validate(request.gender(), 20, "gender");
         if (!request.gender().equals("MALE") && !request.gender().equals("FEMALE")) invalid("gender는 MALE 또는 FEMALE이어야 합니다.");
         if (request.birthDate() == null) invalid("birthDate는 필수입니다.");
+        if (request.birthDate().getYear() < 1000 || request.birthDate().getYear() > 9999) invalid("birthDate는 1000-01-01부터 9999-12-31까지 입력해야 합니다.");
         validate(request.address(), 255, "address");
         validate(request.nickname(), 30, "nickname");
         validate(request.loginId(), 100, "loginId");
@@ -69,7 +70,7 @@ public class SignupController {
             @Schema(description = "필수, 최대 100 코드 포인트", requiredMode = Schema.RequiredMode.REQUIRED) String name,
             @Schema(description = "필수, 숫자만, 최대 30 코드 포인트", requiredMode = Schema.RequiredMode.REQUIRED) String phoneNumber,
             @Schema(allowableValues = {"MALE", "FEMALE"}, requiredMode = Schema.RequiredMode.REQUIRED) String gender,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDate birthDate,
+            @Schema(description = "필수, 1000-01-01부터 9999-12-31까지", requiredMode = Schema.RequiredMode.REQUIRED) LocalDate birthDate,
             @Schema(description = "필수, 최대 255 코드 포인트", requiredMode = Schema.RequiredMode.REQUIRED) String address,
             @Schema(description = "필수, 최대 30 코드 포인트", requiredMode = Schema.RequiredMode.REQUIRED) String nickname,
             @Schema(description = "필수, 최대 100 코드 포인트", requiredMode = Schema.RequiredMode.REQUIRED) String loginId,

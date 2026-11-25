@@ -110,6 +110,25 @@ class SignupWebTest {
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"0999-12-31", "+10000-01-01"})
+    void birthDateOutsideMysqlDateRangeIsRejectedBeforeProofIsConsumed(String birthDate) throws Exception {
+        mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON)
+                .content(REQUEST.replace("1995-01-01", birthDate)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        verifyNoInteractions(signup);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"1000-01-01", "9999-12-31"})
+    void birthDateAtMysqlDateBoundariesIsAccepted(String birthDate) throws Exception {
+        when(signup.signup(any())).thenReturn("member_01");
+        mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON)
+                .content(REQUEST.replace("1995-01-01", birthDate)))
+            .andExpect(status().isCreated());
+    }
+
     @Test
     void invalidEmailProofDoesNotCreateAccount() throws Exception {
         when(signup.signup(any()))
