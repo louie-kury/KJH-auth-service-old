@@ -42,3 +42,20 @@ verification:
 logging:
   pattern:
     dateformat: yyyy-MM-dd'T'HH:mm:ss.SSSXXX,Asia/Seoul
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

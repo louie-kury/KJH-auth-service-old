@@ -48,7 +48,7 @@ class SendVerificationContractTest {
         when(lookup.exists("user@example.com")).thenReturn(true);
         assertThatThrownBy(() -> service.send("User@example.com", "SIGNUP", "127.0.0.1"))
             .isInstanceOf(BusinessException.class).extracting(e -> ((BusinessException) e).getErrorCode())
-            .isEqualTo(ErrorCode.EMAIL_ALREADY_REGISTERED);
+            .isEqualTo(ErrorCode.valueOf("EMAIL_ALREADY_EXISTS"));
         verifyNoInteractions(store, sender);
     }
 

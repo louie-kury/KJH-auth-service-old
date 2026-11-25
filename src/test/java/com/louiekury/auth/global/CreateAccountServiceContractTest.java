@@ -39,19 +39,22 @@ class CreateAccountServiceContractTest {
 
     @Test
     void countsUnicodeCodePointsAndPreservesPasswordSpaces() {
-        String fifteen = "😀".repeat(15);
+        String minimum = "😀".repeat(8);
+        String unicodeMaximum = "😀".repeat(128);
         String maximum = " ".repeat(128);
         when(encoder.encode(anyString())).thenReturn("encoded-value");
         when(storage.save(any())).thenReturn("test-uuid");
-        assertThat(service.create(command("test-login", fifteen))).isEqualTo("test-uuid");
+        assertThat(service.create(command("test-login", minimum))).isEqualTo("test-uuid");
         assertThat(service.create(command("test-login", maximum))).isEqualTo("test-uuid");
-        verify(encoder).encode(fifteen);
+        assertThat(service.create(command("test-login", unicodeMaximum))).isEqualTo("test-uuid");
+        verify(encoder).encode(minimum);
+        verify(encoder).encode(unicodeMaximum);
         verify(encoder).encode(maximum);
     }
 
     @Test
     void rejectsTooShortAndTooLongUnicodePasswordsBeforeSaving() {
-        assertThatIllegalArgumentException().isThrownBy(() -> service.create(command("test-login", "😀".repeat(14))));
+        assertThatIllegalArgumentException().isThrownBy(() -> service.create(command("test-login", "😀".repeat(7))));
         assertThatIllegalArgumentException().isThrownBy(() -> service.create(command("test-login", "😀".repeat(129))));
         verifyNoInteractions(storage, encoder);
     }
