@@ -3,8 +3,11 @@ package com.louiekury.auth.global.web;
 import com.jayway.jsonpath.JsonPath;
 import com.louiekury.auth.account.adapter.in.web.AvailabilityController;
 import com.louiekury.auth.account.adapter.in.web.AvailabilityWebAdapter;
+import com.louiekury.auth.account.adapter.in.web.LoginController;
+import com.louiekury.auth.account.adapter.in.web.LoginWebAdapter;
 import com.louiekury.auth.account.adapter.in.web.SignupController;
 import com.louiekury.auth.account.adapter.in.web.SignupWebAdapter;
+import com.louiekury.auth.account.application.login.CreateLoginUseCase;
 import com.louiekury.auth.account.application.createsignup.CreateSignupUseCase;
 import com.louiekury.auth.account.application.getaccountavailability.GetAccountAvailabilityUseCase;
 import com.louiekury.auth.emailverification.adapter.in.web.EmailVerificationController;
@@ -38,10 +41,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ImportAutoConfiguration({SpringDocConfiguration.class, SpringDocWebMvcConfiguration.class, SwaggerConfig.class,
     SpringDocConfigProperties.class, SwaggerUiConfigProperties.class, SwaggerUiOAuthProperties.class})
-@Import({AvailabilityWebAdapter.class, SignupWebAdapter.class, EmailVerificationWebAdapter.class})
-@MockitoBean(types = {GetAccountAvailabilityUseCase.class, CreateSignupUseCase.class,
+@Import({AvailabilityWebAdapter.class, SignupWebAdapter.class, LoginWebAdapter.class, EmailVerificationWebAdapter.class})
+@MockitoBean(types = {GetAccountAvailabilityUseCase.class, CreateSignupUseCase.class, CreateLoginUseCase.class,
     CreateEmailVerificationUseCase.class, UpdateEmailVerificationUseCase.class})
-@WebMvcTest({AvailabilityController.class, SignupController.class, EmailVerificationController.class})
+@WebMvcTest({AvailabilityController.class, SignupController.class, LoginController.class, EmailVerificationController.class})
 @ActiveProfiles("local")
 class OpenApiLocalTest {
     private final MockMvc mvc;
@@ -195,6 +198,34 @@ class OpenApiLocalTest {
         for (String path : new String[]{"/api/auth/login-ids/availability", "/api/auth/nicknames/availability"}) {
             assertEquals(Set.of("available"), responseDataProperties(document,
                 "$.paths['" + path + "'].get.responses['200'].content['*/*'].schema"));
+        }
+    }
+    @Test
+    @DisplayName("로그인 API 요청과 응답 및 오류 계약을 문서화한다")
+    void loginDocumentsRequestResponseAndErrors() throws Exception {
+        Map<String, Object> document = apiDocument();
+        String path = "$.paths['/api/auth/login'].post";
+        String summary = JsonPath.read(document, path + ".summary");
+        assertTrue(summary.contains("로그인"));
+        assertEquals(Boolean.TRUE, JsonPath.read(document, path + ".requestBody.required"));
+        assertEquals(Set.of("loginId", "password"), properties(document,
+            schemaAt(document, path + ".requestBody.content['application/json'].schema")));
+        assertEquals(Set.of("accessToken", "tokenType", "expiresAt", "memberId"),
+            responseDataProperties(document, path + ".responses['200'].content['*/*'].schema"));
+        for (String[] error : new String[][]{{"400", "VALIDATION_ERROR"},
+                {"401", "INVALID_CREDENTIALS"}, {"403", "ACCOUNT_UNAVAILABLE"}}) {
+            String response = path + ".responses['" + error[0] + "']";
+            String description = JsonPath.read(document, response + ".description");
+            assertTrue(description.contains(error[1]), response);
+            Map<String, Object> content = JsonPath.read(document, response + ".content");
+            assertTrue(!content.isEmpty(), response);
+            for (Object media : content.values()) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> entry = (Map<String, Object>) media;
+                @SuppressWarnings("unchecked")
+                Map<String, Object> schema = (Map<String, Object>) entry.get("schema");
+                assertEquals(Set.of("title", "status", "detail", "code"), properties(document, schema), response);
+            }
         }
     }
     private Map<String, Object> apiDocument() throws Exception {
