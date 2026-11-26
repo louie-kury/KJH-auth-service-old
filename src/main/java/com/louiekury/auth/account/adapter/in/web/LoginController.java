@@ -1,5 +1,6 @@
 package com.louiekury.auth.account.adapter.in.web;
 
+import com.louiekury.auth.account.adapter.in.web.docs.LoginApiDocumentation;
 import com.louiekury.auth.account.adapter.in.web.dto.request.CreateLoginRequestDto;
 import com.louiekury.auth.account.adapter.in.web.dto.response.LoginResponseDto;
 import com.louiekury.auth.global.web.response.ApiResponse;
@@ -14,9 +15,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-public class LoginController {
+public class LoginController implements LoginApiDocumentation {
     private final LoginWebAdapter adapter;
 
+    @Override
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponseDto>> createLogin(@Valid @RequestBody CreateLoginRequestDto request) {
         return adapter.createLogin(request);
