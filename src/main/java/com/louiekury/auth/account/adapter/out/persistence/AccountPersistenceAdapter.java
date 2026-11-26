@@ -1,30 +1,33 @@
 package com.louiekury.auth.account.adapter.out.persistence;
 
-import com.louiekury.auth.account.application.port.out.SaveAccountPort;
+import com.louiekury.auth.account.application.createaccount.CreateAccountData;
+import com.louiekury.auth.account.application.port.out.CreateAccountPort;
+import com.louiekury.auth.account.application.port.out.GetRegisteredEmailPort;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
-public class AccountPersistenceAdapter implements SaveAccountPort {
+@RequiredArgsConstructor
+public class AccountPersistenceAdapter implements CreateAccountPort, GetRegisteredEmailPort {
 
     private final AccountJpaRepository accountRepository;
     private final LoginCredentialJpaRepository credentialRepository;
 
-    public AccountPersistenceAdapter(
-            AccountJpaRepository accountRepository,
-            LoginCredentialJpaRepository credentialRepository
-    ) {
-        this.accountRepository = accountRepository;
-        this.credentialRepository = credentialRepository;
+
+    @Override
+    public boolean getRegisteredEmailExists(String email) {
+        return accountRepository.findByEmail(email).isPresent();
     }
 
     @Override
-    public String save(AccountData account) {
+    public String createAccount(CreateAccountData account) {
         AccountJpaEntity savedAccount = accountRepository.save(new AccountJpaEntity(
-                account.uuid(), account.status(), account.name(), account.phoneNumber(),
-                account.gender(), account.birthDate(), account.address(), account.email(), account.termsAgreed()
+                account.getUuid(), account.getStatus(), account.getName(), account.getPhoneNumber(),
+                account.getGender(), account.getBirthDate(), account.getAddress(), account.getEmail(),
+                account.isTermsAgreed()
         ));
         credentialRepository.save(new LoginCredentialJpaEntity(
-                savedAccount.getId(), account.loginId(), account.passwordHash()
+                savedAccount.getId(), account.getLoginId(), account.getPasswordHash()
         ));
         return savedAccount.getUuid();
     }

@@ -1,42 +1,40 @@
 package com.louiekury.auth.account.application.createaccount;
 
-import com.louiekury.auth.account.application.port.out.EncodePasswordPort;
-import com.louiekury.auth.account.application.port.out.SaveAccountPort;
+import com.louiekury.auth.account.application.port.out.CreateAccountPort;
+import com.louiekury.auth.account.application.port.out.CreatePasswordHashPort;
 import java.util.Objects;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class CreateAccountService implements CreateAccountUseCase {
 
-    private final SaveAccountPort saveAccountPort;
-    private final EncodePasswordPort encodePasswordPort;
+    private final CreateAccountPort createAccountPort;
+    private final CreatePasswordHashPort createPasswordHashPort;
 
-    public CreateAccountService(SaveAccountPort saveAccountPort, EncodePasswordPort encodePasswordPort) {
-        this.saveAccountPort = saveAccountPort;
-        this.encodePasswordPort = encodePasswordPort;
-    }
 
     @Override
     @Transactional
-    public String create(CreateAccountCommand command) {
+    public String createAccount(CreateAccountCommand command) {
         Objects.requireNonNull(command, "command");
-        requireText(command.uuid(), "uuid");
-        requireText(command.status(), "status");
-        requireText(command.name(), "name");
-        requireText(command.phoneNumber(), "phoneNumber");
-        requireText(command.gender(), "gender");
-        Objects.requireNonNull(command.birthDate(), "birthDate");
-        requireText(command.address(), "address");
-        requireText(command.email(), "email");
-        requireText(command.loginId(), "loginId");
-        requirePasswordLength(command.password());
+        requireText(command.getUuid(), "uuid");
+        requireText(command.getStatus(), "status");
+        requireText(command.getName(), "name");
+        requireText(command.getPhoneNumber(), "phoneNumber");
+        requireText(command.getGender(), "gender");
+        Objects.requireNonNull(command.getBirthDate(), "birthDate");
+        requireText(command.getAddress(), "address");
+        requireText(command.getEmail(), "email");
+        requireText(command.getLoginId(), "loginId");
+        requirePasswordLength(command.getPassword());
 
-        String passwordHash = encodePasswordPort.encode(command.password());
-        return saveAccountPort.save(new SaveAccountPort.AccountData(
-                command.uuid(), command.status(), command.name(), command.phoneNumber(),
-                command.gender(), command.birthDate(), command.address(), command.email().strip(),
-                command.termsAgreed(), command.loginId(), passwordHash
+        String passwordHash = createPasswordHashPort.createPasswordHash(command.getPassword());
+        return createAccountPort.createAccount(CreateAccountData.of(
+                command.getUuid(), command.getStatus(), command.getName(), command.getPhoneNumber(),
+                command.getGender(), command.getBirthDate(), command.getAddress(), command.getEmail().strip(),
+                command.isTermsAgreed(), command.getLoginId(), passwordHash
         ));
     }
 
