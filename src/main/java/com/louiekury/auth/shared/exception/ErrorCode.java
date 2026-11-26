@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 public enum ErrorCode {
 
     VALIDATION_ERROR("요청 값이 올바르지 않습니다."),
+    INVALID_CREDENTIALS("아이디 또는 비밀번호가 올바르지 않습니다."),
+    ACCOUNT_UNAVAILABLE("사용할 수 없는 계정입니다."),
     FORBIDDEN("접근 권한이 없습니다."),
     NOT_FOUND("대상을 찾을 수 없습니다."),
     EMAIL_ALREADY_EXISTS("이미 가입된 이메일입니다."),

@@ -2,6 +2,30 @@
 
 루이쿠리 인증 서비스입니다. 로컬 실행에는 JDK 17이 필요하며 Gradle Wrapper를 사용합니다.
 
+## 개발용 로그인과 토큰
+
+`POST /api/auth/login`에 `{"loginId":"가입 ID","password":"비밀번호"}`를 보내면 성공 시 `data`에 `accessToken`, `tokenType`, `expiresAt`, `memberId`를 반환합니다. 토큰은 RS256으로 서명하며 15분 동안 유효합니다. `GET /.well-known/jwks.json`에서 공개키를 제공합니다. 소비자는 신뢰하는 JWKS를 사용해 RS256 서명, issuer, audience와 만료를 검증해야 합니다. refresh 쿠키와 토큰 갱신은 제공하지 않습니다.
+
+실행 전에 개발 전용 RSA 2048비트 이상 PKCS#8 PEM 개인키를 저장소 밖의 안전한 위치에 생성하고 다음 네 설정을 지정해야 합니다. 키가 없거나 잘못되면 서비스는 시작하지 않습니다. 개인키와 토큰을 저장소나 로그에 넣지 마세요.
+
+```sh
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /안전한/경로/private.pem
+openssl pkey -in /안전한/경로/private.pem -pubout -out /안전한/경로/public.pem
+```
+
+실행 인자 예시 (경로와 값은 환경에 맞게 변경):
+
+```text
+--auth.jwt.private-key-path=/안전한/경로/private.pem
+--auth.jwt.issuer=auth-service
+--auth.jwt.audience=louie-services
+--auth.jwt.key-id=dev-key-1
+```
+
+키를 교체할 때 `--auth.jwt.additional-public-keys=kid=공개키파일경로,kid2=공개키파일경로`로 X.509 PEM 공개키를 추가할 수 있습니다. 새 공개키를 먼저 게시하고 검증 측 반영을 확인한 후 서명 키를 교체합니다. 기존 키는 마지막 토큰 발급 후 유효기간 15분과 허용 시각 오차가 지날 때까지 게시합니다. issuer·audience와 신뢰 JWKS 주소는 소비자와 동일하게 설정합니다.
+
+요청 제한, 긴급 키 차단 전파, 비밀번호 해시 갱신과 refresh·로그아웃은 후속 작업입니다. 이 로그인은 격리된 개발 환경에서만 사용하고 운영에 공개하지 않습니다.
+
 ## 외부 MySQL 연결과 실행
 
 저장소 루트에 `.env` 파일을 만들고 실제 데이터베이스 접속 정보를 설정합니다. 기존 `.env`가 있으면 필요한 항목만 확인합니다. 실제 비밀번호는 로컬에만 보관합니다.
