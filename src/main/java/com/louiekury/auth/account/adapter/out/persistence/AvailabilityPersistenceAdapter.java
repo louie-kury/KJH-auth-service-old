@@ -1,26 +1,25 @@
 package com.louiekury.auth.account.adapter.out.persistence;
 
-import com.louiekury.auth.account.application.availability.AvailabilityLookup;
+import com.louiekury.auth.account.application.port.out.GetAccountAvailabilityPort;
 import java.util.Objects;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-public class AvailabilityPersistenceAdapter implements AvailabilityLookup {
+@RequiredArgsConstructor
+public class AvailabilityPersistenceAdapter implements GetAccountAvailabilityPort {
     private final JdbcTemplate jdbc;
 
-    public AvailabilityPersistenceAdapter(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
-    }
 
     @Override
-    public boolean loginIdExists(String loginId) {
+    public boolean getLoginIdExists(String loginId) {
         return Objects.requireNonNull(jdbc.queryForObject(
             "SELECT EXISTS(SELECT 1 FROM login_credential WHERE login_id = ?)", Boolean.class, loginId));
     }
 
     @Override
-    public boolean nicknameExists(String nickname) {
+    public boolean getNicknameExists(String nickname) {
         return Objects.requireNonNull(jdbc.queryForObject(
             "SELECT EXISTS(SELECT 1 FROM user_profile WHERE nickname = ?)", Boolean.class, nickname));
     }

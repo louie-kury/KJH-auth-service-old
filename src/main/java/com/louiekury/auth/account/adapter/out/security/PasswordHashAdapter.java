@@ -1,20 +1,19 @@
 package com.louiekury.auth.account.adapter.out.security;
 
-import com.louiekury.auth.account.application.port.out.EncodePasswordPort;
+import com.louiekury.auth.account.application.port.out.CreatePasswordHashPort;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
-public class PasswordHashAdapter implements EncodePasswordPort {
+@RequiredArgsConstructor
+public class PasswordHashAdapter implements CreatePasswordHashPort {
 
     private final PasswordEncoder passwordEncoder;
 
-    public PasswordHashAdapter(PasswordEncoder passwordEncoder) {
-        this.passwordEncoder = passwordEncoder;
-    }
 
     @Override
-    public String encode(String rawPassword) {
+    public String createPasswordHash(String rawPassword) {
         return passwordEncoder.encode(rawPassword);
     }
 }
